@@ -1,150 +1,78 @@
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class Main {
+    private static final Integer NOMINAL_PLATE_WIDTH = 29;
+    private static final Integer NOMINAL_PLATE_HEIGHT = 22;
+
+    private static final Integer SUIT_PLATE_WIDTH = 30;
+    private static final Integer SUIT_PLATE_HEIGHT = 33;
+
+    private static final String ETALON_NOMINALS_PATH = "./etalon/nominals";
+    private static final String SUIT_NOMINALS_PATH = "./etalon/suits";
+
     public static void main(String[] args) throws IOException {
-        Map<String, Boolean[][]> etalons = new HashMap<>();
-
-        Path etalonPath = Paths.get("./etalon");
-        Files.walk(etalonPath, 1).filter(el -> !el.normalize().endsWith(etalonPath.normalize())).forEach(el -> {
-            try {
-                Boolean[][] e = new Boolean[29][22];
-                BufferedImage img = ImageIO.read(el.toFile());
-                int width = img.getWidth();
-                int high = img.getHeight();
-                for (int i = 0; i < width; i++) {
-                    for (int j = 0; j < high; j++) {
-                        int color = img.getRGB(i, j);
-                        int r = (color & 0xFF << 16) >> 16;
-                        int g = (color & 0xFF << 8) >> 8;
-                        int b = color & 0xFF;
-                        e[i][j] = (r != 255 && g != 255 && b != 255);
-                    }
-                }
-                String fileName =  el.toFile().getName();
-                String key = fileName.substring(0,fileName.indexOf("."));
-                etalons.put(key, e);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        });
-
-
         if (args == null || args.length < 1) {
-            System.out.println("Вы не указали параметр");
+            System.out.println("Вы не указали путь до папки с данными");
             return;
         }
+
+        Path etalonNominalsPath = Paths.get(ETALON_NOMINALS_PATH);
+        Map<String, Boolean[][]> etalonNominals = getEtalon(etalonNominalsPath, NOMINAL_PLATE_WIDTH, NOMINAL_PLATE_HEIGHT);
+
+        Path etalonSuitsPath = Paths.get(SUIT_NOMINALS_PATH);
+        Map<String, Boolean[][]> etalonSuits = getEtalon(etalonSuitsPath, SUIT_PLATE_WIDTH, SUIT_PLATE_HEIGHT);
+
         Path root = Paths.get(args[0]);
-        final AtomicInteger c = new AtomicInteger();
         Files.walk(root, 1).filter(el -> !el.normalize().endsWith(root.normalize())).forEach(el -> {
+                    String actual = "";
                     try {
-                        System.out.println(el + " номер " + c.get());
                         BufferedImage img = ImageIO.read(el.toFile());
-                        BufferedImage subImg1 = img.getSubimage(148, 592, 29, 22);
-                        BufferedImage subImg2 = img.getSubimage(220, 592, 29, 22);
-                        BufferedImage subImg3 = img.getSubimage(292, 592, 29, 22);
-                        BufferedImage subImg4 = img.getSubimage(363, 592, 29, 22);
-                        BufferedImage subImg5 = img.getSubimage(432, 592, 29, 22);
+                        BufferedImage nominalPlate1 = img.getSubimage(148, 592, NOMINAL_PLATE_WIDTH, NOMINAL_PLATE_HEIGHT);
+                        BufferedImage nominalPlate2 = img.getSubimage(220, 592, NOMINAL_PLATE_WIDTH, NOMINAL_PLATE_HEIGHT);
+                        BufferedImage nominalPlate3 = img.getSubimage(292, 592, NOMINAL_PLATE_WIDTH, NOMINAL_PLATE_HEIGHT);
+                        BufferedImage nominalPlate4 = img.getSubimage(363, 592, NOMINAL_PLATE_WIDTH, NOMINAL_PLATE_HEIGHT);
+                        BufferedImage nominalPlate5 = img.getSubimage(435, 592, NOMINAL_PLATE_WIDTH, NOMINAL_PLATE_HEIGHT);
 
-//                        System.out.println("1");
-                        float max = -1;
-                        String key = "";
-                        for (Map.Entry<String, Boolean[][]> simbolEtalon : etalons.entrySet()) {
-                            float res = check(subImg1,simbolEtalon.getValue());
-                            if (res > max){
-                                max = res;
-                                key = simbolEtalon.getKey();
-                            }
-//                            System.out.println(el+" 1 "+simbolEtalon.getKey()+" "+res+"%");
-                        }
-                        System.out.print(key+" ");
+                        BufferedImage suitPlate1 = img.getSubimage(170, 634, SUIT_PLATE_WIDTH, SUIT_PLATE_HEIGHT);
+                        BufferedImage suitPlate2 = img.getSubimage(241, 634, SUIT_PLATE_WIDTH, SUIT_PLATE_HEIGHT);
+                        BufferedImage suitPlate3 = img.getSubimage(313, 634, SUIT_PLATE_WIDTH, SUIT_PLATE_HEIGHT);
+                        BufferedImage suitPlate4 = img.getSubimage(385, 634, SUIT_PLATE_WIDTH, SUIT_PLATE_HEIGHT);
+                        BufferedImage suitPlate5 = img.getSubimage(456, 634, SUIT_PLATE_WIDTH, SUIT_PLATE_HEIGHT);
 
-//                        System.out.println("2");
-                        max = -1;
-                        key = "";
-                        for (Map.Entry<String, Boolean[][]> simbolEtalon : etalons.entrySet()) {
-                            float res = check(subImg2,simbolEtalon.getValue());
-                            if (res > max){
-                                max = res;
-                                key = simbolEtalon.getKey();
-                            }
-//                            System.out.println(el+" 2 "+simbolEtalon.getKey()+" "+check(subImg2,simbolEtalon.getValue())+"%");
-                        }
-                        System.out.print(key+" ");
+                        String nominal = parse(nominalPlate1, etalonNominals, NOMINAL_PLATE_WIDTH, NOMINAL_PLATE_HEIGHT, true);
+                        actual = actual + nominal;
+                        String suit = parse(suitPlate1, etalonSuits, SUIT_PLATE_WIDTH, SUIT_PLATE_HEIGHT, false);
+                        actual = actual + suit;
 
-//                        System.out.println("3");
-                        max = -1;
-                        key = "";
-                        for (Map.Entry<String, Boolean[][]> simbolEtalon : etalons.entrySet()) {
-                            float res = check(subImg3,simbolEtalon.getValue());
-                            if (res > max){
-                                max = res;
-                                key = simbolEtalon.getKey();
-                            }
-//                            System.out.println(el+" 3 "+simbolEtalon.getKey()+" "+check(subImg3,simbolEtalon.getValue())+"%");
-                        }
-                        System.out.print(key+" ");
+                        nominal = parse(nominalPlate2, etalonNominals, NOMINAL_PLATE_WIDTH, NOMINAL_PLATE_HEIGHT, true);
+                        actual = actual + nominal;
+                        suit = parse(suitPlate2, etalonSuits, SUIT_PLATE_WIDTH, SUIT_PLATE_HEIGHT, false);
+                        actual = actual + suit;
 
-//                        System.out.println("4");
-                        max = -1;
-                        key = "";
-                        for (Map.Entry<String, Boolean[][]> simbolEtalon : etalons.entrySet()) {
-                            float res = check(subImg4,simbolEtalon.getValue());
-                            if (res > max){
-                                max = res;
-                                key = simbolEtalon.getKey();
-                            }
-//                            System.out.println(el+" 4 "+simbolEtalon.getKey()+" "+check(subImg4,simbolEtalon.getValue())+"%");
-                        }
-                        System.out.print(key+" ");
+                        nominal = parse(nominalPlate3, etalonNominals, NOMINAL_PLATE_WIDTH, NOMINAL_PLATE_HEIGHT, true);
+                        actual = actual + nominal;
+                        suit = parse(suitPlate3, etalonSuits, SUIT_PLATE_WIDTH, SUIT_PLATE_HEIGHT, false);
+                        actual = actual + suit;
 
-//                        System.out.println("5");
-                        max = -1;
-                        key = "";
-                        for (Map.Entry<String, Boolean[][]> simbolEtalon : etalons.entrySet()) {
-                            float res = check(subImg5,simbolEtalon.getValue());
-                            if (res > max){
-                                max = res;
-                                key = simbolEtalon.getKey();
-                            }
-//                            System.out.println(el+" 5 "+simbolEtalon.getKey()+" "+check(subImg5,simbolEtalon.getValue())+"%");
-                        }
-                        System.out.print(key+"\n\r");
+                        nominal = parse(nominalPlate4, etalonNominals, NOMINAL_PLATE_WIDTH, NOMINAL_PLATE_HEIGHT, true);
+                        actual = actual + nominal;
+                        suit = parse(suitPlate4, etalonSuits, SUIT_PLATE_WIDTH, SUIT_PLATE_HEIGHT, false);
+                        actual = actual + suit;
 
-//                        transform(subImg1);
-////                        System.out.println("2 " + check(subImg1, e2));
-////                        System.out.println("10 " + check(subImg1, e10));
-//
-//                        transform(subImg2);
-////                        System.out.println("2 " + check(subImg2, e2));
-////                        System.out.println("10 " + check(subImg2, e10));
-//
-//                        transform(subImg3);
-////                        System.out.println("2 " + check(subImg3, e2));
-////                        System.out.println("10 " + check(subImg3, e10));
-//
-//                        transform(subImg4);
-////                        System.out.println("2 " + check(subImg4, e2));
-////                        System.out.println("10 " + check(subImg4, e10));
-//
-//                        transform(subImg5);
-////                        System.out.println("2 " + check(subImg5, e2));
-////                        System.out.println("10 " + check(subImg5, e10));
+                        nominal = parse(nominalPlate5, etalonNominals, NOMINAL_PLATE_WIDTH, NOMINAL_PLATE_HEIGHT, true);
+                        actual = actual + nominal;
+                        suit = parse(suitPlate5, etalonSuits, SUIT_PLATE_WIDTH, SUIT_PLATE_HEIGHT, false);
+                        actual = actual + suit;
 
-                        ImageIO.write(subImg1, "png", new File("c" + c.get() + "-1.png"));
-                        ImageIO.write(subImg2, "png", new File("c" + c.get() + "-2.png"));
-                        ImageIO.write(subImg3, "png", new File("c" + c.get() + "-3.png"));
-                        ImageIO.write(subImg4, "png", new File("c" + c.get() + "-4.png"));
-                        ImageIO.write(subImg5, "png", new File("c" + c.get() + "-5.png"));
-                        c.incrementAndGet();
+                        System.out.println(el.toFile().getName() + " - " + actual.trim());
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
@@ -153,80 +81,95 @@ public class Main {
 
     }
 
-    private static void transform(BufferedImage inImg) {
+    private static Boolean isBlack(Integer color) {
+        int r = (color & 0xFF << 16) >> 16;
+        int g = (color & 0xFF << 8) >> 8;
+        int b = color & 0xFF;
+        // grey background
+        if (r == 120 && g == 120 && b == 120) {
+            return false;
+            // bright red
+        } else if ((r > 185 && g > 53 && g < 93 && b > 53 && b < 93)) {
+            return true;
+            // dart red
+        } else if ((r > 77 && r < 117 && g > 16 && g < 56 && b > 16 && b < 56)) {
+            return true;
+            // grey
+        } else return r < 65 && g < 65 && b < 65;
+    }
+
+    private static boolean isEmpty(BufferedImage inImg) {
         int width = inImg.getWidth();
         int high = inImg.getHeight();
+        boolean isBlack = true;
+        for (int i = 0; i < width; i++) {
+            for (int j = 0; j < high; j++) {
+                isBlack = isBlack & isBlack(inImg.getRGB(i,j));
+            }
+        }
+        return isBlack;
+    }
+
+    private static String parse(BufferedImage plate, Map<String, Boolean[][]> etalons, int w, int h, boolean isUpperCase) {
+        if (isEmpty(plate)) {
+            return "";
+        }
+        float max = -1;
+        String key = "";
+        for (Map.Entry<String, Boolean[][]> etalonMatrix : etalons.entrySet()) {
+            float res = calculatePercentageOfMatching(plate, etalonMatrix.getValue(), w, h);
+            if (res > max) {
+                max = res;
+                key = etalonMatrix.getKey();
+            }
+        }
+        return isUpperCase ? key.toUpperCase(Locale.ROOT) : key.toLowerCase(Locale.ROOT);
+    }
+
+    private static float calculatePercentageOfMatching(BufferedImage inImg, Boolean[][] e, int w, int h) {
+        int width = inImg.getWidth();
+        int high = inImg.getHeight();
+        Boolean[][] current = new Boolean[w][h];
         for (int i = 0; i < width; i++) {
             for (int j = 0; j < high; j++) {
                 int color = inImg.getRGB(i, j);
-                int r = (color & 0xFF << 16) >> 16;
-                int g = (color & 0xFF << 8) >> 8;
-                int b = color & 0xFF;
-                if (r > 100 && r < 140 && g > 100 && g < 140 && b > 100 && b < 140) {
-                    inImg.setRGB(i, j, 0xFF | 0xFF << 8 | 0xFF << 16);
-                } else if (r > 185 && r < 225 && g > 53 && g < 93 && b > 53 && b < 93) {
-                    inImg.setRGB(i, j, 0);
-                } else if (r > 77 && r < 117 && g > 16 && g < 56 && b > 16 && b < 56) {
-                    inImg.setRGB(i, j, 0);
-                } else if (r > 0 && r < 65 && g > 0 && g < 65 && b > 0 && b < 65) {
-                    inImg.setRGB(i, j, 0);
-                } else {
-                    inImg.setRGB(i, j, 0xFF | 0xFF << 8 | 0xFF << 16);
-                }
-//                if (r<125 && g<125 && b<125){
-//                    inImg.setRGB(i,j,0);
-//                } else {
-//                    inImg.setRGB(i,j,0xFF | 0xFF<<8 | 0xFF<<16);
-//                }
-//                System.out.println(color +" R="+ ((color & 0xFF<<16)>>16)+" G="+((color & 0xFF<<8)>>8)+" B"+(color & 0xFF));
-
+                current[i][j] = isBlack(color);
             }
         }
-    }
 
-    private static float check(BufferedImage inImg, Boolean[][] e) {
-        int width = inImg.getWidth();
-        int high = inImg.getHeight();
         int count = 0;
         for (int i = 0; i < width; i++) {
             for (int j = 0; j < high; j++) {
-                int color = inImg.getRGB(i, j);
-                int r = (color & 0xFF << 16) >> 16;
-                int g = (color & 0xFF << 8) >> 8;
-                int b = color & 0xFF;
-                if ((r > 185 && r < 225 && g > 53 && g < 93 && b > 53 && b < 93) && e[i][j]) {
+                if (current[i][j] == e[i][j]) {
                     count++;
-                } else if ((r > 77 && r < 117 && g > 16 && g < 56 && b > 16 && b < 56) && e[i][j]) {
-                    count++;
-                } else if (r < 65 && g < 65 && b < 65 && e[i][j]) {
-                    count++;
-                }
-//                if (r<125 && g<125 && b<125){
-//                    inImg.setRGB(i,j,0);
-//                } else {
-//                    inImg.setRGB(i,j,0xFF | 0xFF<<8 | 0xFF<<16);
-//                }
-//                System.out.println(color +" R="+ ((color & 0xFF<<16)>>16)+" G="+((color & 0xFF<<8)>>8)+" B"+(color & 0xFF));
-
-            }
-        }
-
-        float all = 0;
-        for (int i = 0; i < e.length; i++) {
-            Boolean[] booleans = e[i];
-            for (int j = 0; j < booleans.length; j++) {
-                boolean aBoolean = booleans[j];
-                if (aBoolean) {
-                    all++;
                 }
             }
         }
 
-
-        return count / (all / 100);
+        return (float) (count / ((w * h) / 100.0));
     }
 
-//    public static Set<String> getAnagramm(String in){
-//
-//    }
+    private static Map<String, Boolean[][]> getEtalon(Path etalonPath, int w, int h) throws IOException {
+        Map<String, Boolean[][]> etalons = new HashMap<>();
+        Files.walk(etalonPath, 1).filter(el -> !el.normalize().endsWith(etalonPath.normalize())).forEach(el -> {
+            try {
+                Boolean[][] e = new Boolean[w][h];
+                BufferedImage img = ImageIO.read(el.toFile());
+                for (int i = 0; i < w; i++) {
+                    for (int j = 0; j < h; j++) {
+                        int color = img.getRGB(i, j);
+                        e[i][j] = isBlack(color);
+                    }
+                }
+                String fileName = el.toFile().getName();
+                String key = fileName.substring(0, fileName.indexOf("."));
+
+                etalons.put(key, e);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        });
+        return etalons;
+    }
+
 }
